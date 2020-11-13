@@ -1,6 +1,7 @@
 #include "catch.hpp"
 #include "variant.hpp"
 
+#include <cstring>
 #include <string>
 #include <type_traits>
 
@@ -83,5 +84,25 @@ TEST_CASE("Get_if", "[variant]") {
     REQUIRE(get_if<std::string>(var));
     REQUIRE(*get_if<1>(var) == "string");
     REQUIRE(*get_if<std::string>(var) == "string");
+}
+
+TEST_CASE("Memory erasure", "[variant]") {
+    union union_t {
+        union_t() {
+            std::memset(this->as_bytes, 0xff, sizeof(*this));
+        }
+        ~union_t() { }
+        variant<int, unsigned long long> as_variant;
+        unsigned char as_bytes[sizeof(variant<int, std::string>)];
+    };
+    union_t u;
+    unsigned char zeroes[sizeof(u.as_variant)] = { 0 };
+    unsigned char ff[sizeof(u.as_variant)];
+    std::memset(ff, 0xff, sizeof(ff));
+    REQUIRE(std::memcmp(u.as_bytes, ff, sizeof(ff)) == 0);
+    new(&u.as_variant) variant<int, unsigned long long>(1);
+    u.as_variant.~variant<int, unsigned long long>();
+
+    REQUIRE(std::memcmp(u.as_bytes, zeroes, sizeof(zeroes)) == 0);
 }
 
