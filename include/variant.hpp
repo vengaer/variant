@@ -238,7 +238,7 @@ class variant {
 
 
     private:
-        alignas(Alignment) unsigned char storage_[Size];
+        alignas(Alignment) unsigned char storage_[Size] = { 0 };
         std::size_t index_{variant_npos};
 
         template <typename T, typename... Args>
@@ -302,6 +302,7 @@ variant<Ts...>::variant(Args&&... args)
 template <typename... Ts>
 variant<Ts...>::~variant() {
     destroyer<0, Ts...>{}(storage_, index_);
+    std::memset(this, 0, sizeof(*this));
 }
 
 template <typename... Ts>
@@ -354,6 +355,7 @@ void variant<Ts...>::destroyer<Index, U0, U1toN...>::operator()(unsigned char* s
         if constexpr(!std::is_trivially_destructible_v<U0>) {
             reinterpret_cast<U0*>(storage)->~U0();
         }
+        std::memset(storage, 0, sizeof(U0));
     }
     else {
         if constexpr(sizeof...(U1toN) > 0) {
